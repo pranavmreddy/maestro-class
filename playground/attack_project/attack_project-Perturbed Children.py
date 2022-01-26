@@ -40,19 +40,27 @@ class ProjectAttack:
 
         perturbed_image = deepcopy(original_image)
         # --------------TODO--------------
-        
-        # write your attack function here
+        # To run this file change the group_name(#L:41) in attack_project-Evaluation.py to "FGSM_Targeted"
 
-        print('target', target_label)
+        iters = 10 # int(min(epsilon + 4, 1.25*epsilon))
 
-        target_labels = [target_label]*len(labels)
 
-        print('target1', )
+        for i in range(iters):
 
-        data_grad = self.vm.get_batch_input_gradient(perturbed_image, target_labels)
-        print('Data grad:', data_grad)
-        print(data_grad.shape)
-        input()
+            target_labels = [target_label]*len(labels)
+
+            # Calculate the gradient of loss with respect to the image and target_label
+            data_grad = self.vm.get_batch_input_gradient(perturbed_image, target_labels)
+            data_grad = torch.FloatTensor(data_grad)
+
+            # Determine the direction of gradient using sign()
+            sign_data_grad = data_grad.sign()
+
+            # Perturb the image in the direction of gradient with respect to target_label by epsilon
+            perturbed_image = torch.FloatTensor(original_image) + epsilon * sign_data_grad
+            
+            # Clamp the value of each pixel to be between 0 & 1
+            perturbed_image = torch.clamp(perturbed_image, 0, 1)
 
         # ------------END TODO-------------
 
