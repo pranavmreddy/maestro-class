@@ -8,25 +8,25 @@ from transformers.data.data_collator import default_data_collator
 from Maestro.evaluator.Evaluator import get_data
 
 class ProjectAttack:
-    def __init__(
-        self,
-        vm,
-        image_size: List[int],
-        l2_threshold=7.5
 
-    ):
+
+    def __init__(self, vm, image_size: List[int], l2_threshold=7.5):
         self.vm = vm
         self.image_size = image_size
         self.l2_threshold = l2_threshold
 
-    def attack(
-        self,
-        original_image:  np.ndarray,
-        labels: List[int],
-        target_label: int,
-        epsilon = 0.214
+    
+    def zero_gradients(x):
+        if isinstance(x, torch.Tensor):
+            if x.grad is not None:
+                x.grad.detach_()
+                x.grad.zero_()
+        elif isinstance(x, collections.abc.Iterable):
+            for elem in x:
+                zero_gradients(elem)
 
-    ):
+
+    def attack(self, original_image:  np.ndarray, labels: List[int], target_label: int, epsilon = 0.214):
         """
         args:
             original_image: a numpy ndarray images, [1,3,32,32]
@@ -43,7 +43,20 @@ class ProjectAttack:
         
         # write your attack function here
 
+        print('target', target_label)
+
+        target_labels = [target_label]*len(labels)
+
+        print('target1', )
+
+        data_grad = self.vm.get_batch_input_gradient(perturbed_image, target_labels)
+        print('Data grad:', data_grad)
+        print(data_grad.shape)
+        input()
+
         # ------------END TODO-------------
+
+        
 
         return perturbed_image.cpu().detach().numpy()
 
