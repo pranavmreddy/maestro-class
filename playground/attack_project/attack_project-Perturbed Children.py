@@ -26,7 +26,7 @@ class ProjectAttack:
                 zero_gradients(elem)
 
 
-    def attack(self, original_image:  np.ndarray, labels: List[int], target_label: int, epsilon = 0.214):
+    def attack(self, original_image:  np.ndarray, labels: List[int], target_label: int, epsilon = 0.3):
         """
         args:
             original_image: a numpy ndarray images, [1,3,32,32]
@@ -42,25 +42,55 @@ class ProjectAttack:
         # --------------TODO--------------
         # To run this file change the group_name(#L:41) in attack_project-Evaluation.py to "FGSM_Targeted"
 
-        iters = 10 # int(min(epsilon + 4, 1.25*epsilon))
+        alpha = 2/255
+        perturbed_image = torch.FloatTensor(perturbed_image)
 
+        perturbed_image = perturbed_image + torch.empty_like(perturbed_image).uniform_(-epsilon, epsilon)
+        perturbed_image = torch.clamp(perturbed_image, min=0, max=1).detach()
+
+        iters = 40 # int(min(epsilon + 4, 1.25*epsilon))
+
+        original_tensor = torch.FloatTensor(original_image)
+
+        target_labels = [target_label]*len(labels)
+
+        loss = torch.nn.CrossEntropyLoss()
 
         for i in range(iters):
 
-            target_labels = [target_label]*len(labels)
+            # # Calculate the gradient of loss with respect to the image and target_label
+            # data_grad = self.vm.get_batch_input_gradient(perturbed_image, target_labels)
+            # data_grad = torch.FloatTensor(data_grad)
 
-            # Calculate the gradient of loss with respect to the image and target_label
-            data_grad = self.vm.get_batch_input_gradient(perturbed_image, target_labels)
-            data_grad = torch.FloatTensor(data_grad)
+            # # Determine the direction of gradient using sign()
+            # sign_data_grad = data_grad.sign()
 
-            # Determine the direction of gradient using sign()
-            sign_data_grad = data_grad.sign()
-
-            # Perturb the image in the direction of gradient with respect to target_label by epsilon
-            perturbed_image = torch.FloatTensor(original_image) + epsilon * sign_data_grad
+            # # Perturb the image in the direction of gradient with respect to target_label by epsilon
+            # perturbed_image = torch.FloatTensor(perturbed_image) + alpha * sign_data_grad
             
+            # delta = torch.clamp(perturbed_image - original_image, min=-epsilon, max=epsilon)
+            # perturbed_image = torch.clamp(original_tensor + delta, min=0, max=1).detach()
+
             # Clamp the value of each pixel to be between 0 & 1
-            perturbed_image = torch.clamp(perturbed_image, 0, 1)
+            # perturbed_image = torch.clamp(perturbed_image, 0, 1)
+
+
+            output = torch.FloatTensor(self.vm.get_batch_output(perturbed_image))
+            # Calculate loss
+            cost = -loss(output, torch.LongTensor(target_labels))
+
+            # print(cost)
+            # input()
+
+            # Update adversarial images
+            grad = torch.autograd.grad(cost, perturbed_image,
+                                       retain_graph=False, create_graph=False)[0]
+
+            perturbed_image = perturbed_image.detach() + alpha*grad.sign()
+            delta = torch.clamp(perturbed_image - original_tensor, min=-epsilon, max=epsilon)
+            perturbed_image = torch.clamp(original_tensor + delta, min=0, max=1).detach()
+
+            
 
         # ------------END TODO-------------
 
